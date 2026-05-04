@@ -243,9 +243,7 @@ fn bounds_check(r: i32, c: i32) -> bool {
 }
 
 fn generate_bombs(grid: &mut [[Cell; COLS]; ROWS], n: usize, exclude_r: usize, exclude_c: usize) {
-    if n >= ROWS * COLS {
-        panic!("The current grid size requires less than {} bombs.", ROWS * COLS);
-    }
+    assert!(n < ROWS* COLS, "The current grid size requires less than {} bombs.", ROWS * COLS);
 
     // generate n bombs excluding clicked location
     for _ in 0..n {
