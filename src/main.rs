@@ -180,7 +180,10 @@ async fn main() {
 fn bfs_reveal_cells(grid: &mut [[Cell; COLS]; ROWS], start_r: usize, start_c: usize, flagged_cells: &mut usize) {
     // invariant1: when calling this we must guarantee that we start with a safe, unflagged cell
     // invariant2: all items added to queue have 0 neighbouring bombs
-    // Note: this may reveal flagged cells but shouldnt matter (we might reveal cells with flagged = true)
+
+    assert!(bounds_check(start_r as i32, start_c as i32), "Start position must be within bounds");
+    assert!(!grid[start_r][start_c].bomb, "Cannot start BFS on a bomb");
+    assert!(!grid[start_r][start_c].flagged, "Reveal should not begin with a flag");
 
     use std::collections::VecDeque;
     let mut q: VecDeque<(usize, usize)> = VecDeque::new();
@@ -206,10 +209,12 @@ fn bfs_reveal_cells(grid: &mut [[Cell; COLS]; ROWS], start_r: usize, start_c: us
                 let nr = nr as usize;
                 let nc = nc as usize;
                 let nei_cell = &mut grid[nr][nc];
+                assert!(!nei_cell.bomb, "This breaks the invariant of the reveal BFS");
                 // check if not revealed only, this acts as our visited set, and termination condition to never revisit.
                 if !nei_cell.revealed {
                     nei_cell.revealed = true;
                     if nei_cell.flagged {
+                        // unflag the cell if its been incorrectly flagged
                         *flagged_cells -= 1;
                     }
                     if nei_cell.number == 0 {
@@ -266,7 +271,7 @@ fn bounds_check(r: i32, c: i32) -> bool {
 }
 
 fn generate_bombs(grid: &mut [[Cell; COLS]; ROWS], n: usize, exclude_r: usize, exclude_c: usize) {
-    assert!(n < ROWS* COLS, "The current grid size requires less than {} bombs.", ROWS * COLS);
+    assert!(n < ROWS * COLS, "The current grid size requires less than {} bombs.", ROWS * COLS);
 
     // generate n bombs excluding clicked location
     for _ in 0..n {
