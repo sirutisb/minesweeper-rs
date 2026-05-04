@@ -45,6 +45,7 @@ async fn main() {
     }; COLS]; ROWS];
 
     let mut started_game = false;
+    let mut won_game = false;
 
     let mut flagged_cells = 0;
     let mut correct_flags = 0;
@@ -82,6 +83,7 @@ async fn main() {
                     }
                 }
                 if correct_flags == NUM_BOMBS && flagged_cells == NUM_BOMBS {
+                    won_game = true;
                     println!("You Win!");
                     reveal_all_bombs(&mut grid);
                 }
@@ -146,7 +148,11 @@ async fn main() {
                             draw_tile(&texture_digit[(cell.number - 1) as usize], x, y);
                         }
                     } else {
-                        draw_tile(&texture_exploded, x, y);
+                        if won_game {
+                            draw_tile(&texture_mine, x, y);
+                        } else {
+                            draw_tile(&texture_exploded, x, y);
+                        }
                     }
                 }
             }
