@@ -18,15 +18,24 @@ const GAME_HEIGHT: usize = 1280;
 const CELL_WIDTH : f32 = GAME_WIDTH as f32 / COLS as f32;
 const CELL_HEIGHT : f32 = GAME_HEIGHT as f32 / ROWS as f32;
 
-const DIGIT_FONT_SIZE : f32 = CELL_WIDTH;
-const FLAG_FONT_SIZE : f32 = CELL_WIDTH;
-const BOMB_FONT_SIZE : f32 = CELL_WIDTH / 2.0;
-
 #[macroquad::main("Minesweeper")]
 async fn main() {
     srand(date::now() as u64);
-
     request_new_screen_size(GAME_WIDTH as f32, GAME_HEIGHT as f32);
+
+    set_pc_assets_folder("assets");
+    let texture_unknown = load_texture("tileUnknown.png").await.unwrap();
+    let texture_empty = load_texture("tileEmpty.png").await.unwrap();
+    let texture_flag = load_texture("tileFlag.png").await.unwrap();
+    let texture_mine = load_texture("tileMine.png").await.unwrap();
+    let texture_exploded = load_texture("tileExploded.png").await.unwrap();
+
+    let mut texture_digit : Vec<Texture2D> = Vec::with_capacity(8);
+    for i in 0..8 {
+        let file_name = format!("Tile{}.png", i + 1);
+        let texture = load_texture(&file_name).await.unwrap();
+        texture_digit.push(texture);
+    }
 
     let mut grid: [[Cell; COLS]; ROWS] = [[Cell {
             bomb: false,
@@ -123,56 +132,25 @@ async fn main() {
                 let cell : &Cell = &grid[r][c];
                 if !cell.revealed {
                     // Not revealed
-                    draw_rectangle(x, y, CELL_WIDTH, CELL_HEIGHT, DARKGRAY);
                     if cell.flagged {
-                        let text_to_draw = "F";
-                        let measured_size = measure_text(&text_to_draw, None, FLAG_FONT_SIZE as u16, 1.0);
-
-                        // Center the text in the 100x100 cell
-                        let text_x = x + (CELL_WIDTH - measured_size.width) / 2.0;
-                        let text_y = y + (CELL_HEIGHT + measured_size.offset_y) / 2.0;
-
-                        draw_text(&text_to_draw, text_x, text_y, FLAG_FONT_SIZE, GREEN);
+                        draw_tile(&texture_flag, x, y);
+                    } else {
+                        draw_tile(&texture_unknown, x, y);
                     }
                 } else {
                     // Revealed
                     if !cell.bomb {
-                        // show number if > 0
-                        if cell.number > 0 {
-
-                            let text_to_draw = cell.number.to_string();
-                            let measured_size = measure_text(&text_to_draw, None, DIGIT_FONT_SIZE as u16, 1.0);
-
-                            // Center the text in the 100x100 cell
-                            let text_x = x + (CELL_WIDTH - measured_size.width) / 2.0;
-                            let text_y = y + (CELL_HEIGHT + measured_size.offset_y) / 2.0;
-
-                            draw_text(&text_to_draw, text_x, text_y, DIGIT_FONT_SIZE, BLUE);
+                        if cell.number == 0 {
+                            draw_tile(&texture_empty, x, y);
+                        } else {
+                            draw_tile(&texture_digit[(cell.number - 1) as usize], x, y);
                         }
                     } else {
-                        let text_to_draw = "BOMB";
-                        let measured_size = measure_text(&text_to_draw, None, BOMB_FONT_SIZE as u16, 1.0);
-
-                        // Center the text in the 100x100 cell
-                        let text_x = x + (CELL_WIDTH - measured_size.width) / 2.0;
-                        let text_y = y + (CELL_HEIGHT + measured_size.offset_y) / 2.0;
-
-                        draw_text(&text_to_draw, text_x, text_y, BOMB_FONT_SIZE, PURPLE);
+                        draw_tile(&texture_exploded, x, y);
                     }
                 }
             }
         }
-        // Draw grid lines
-        for r in 0..=ROWS {
-            let y : f32 = r as f32 * CELL_HEIGHT;
-            draw_line(0.0, y, CELL_WIDTH * COLS as f32, y, 3.0, BLACK);
-        }
-
-        for c in 0..=COLS {
-            let x : f32 = c as f32 * CELL_WIDTH;
-            draw_line(x, 0.0, x, CELL_HEIGHT * ROWS as f32, 3.0, BLACK);
-        }
-
         next_frame().await
     }
 }
@@ -288,4 +266,15 @@ fn generate_bombs(grid: &mut [[Cell; COLS]; ROWS], n: usize, exclude_r: usize, e
             }
         }
     }
+}
+
+fn draw_tile(texture: &Texture2D, x: f32, y: f32) {
+    draw_texture_ex(&texture, x, y, WHITE, DrawTextureParams {
+        dest_size: Some(Vec2{x: CELL_WIDTH, y: CELL_HEIGHT}),
+        source: None,
+        rotation: 0.0,
+        flip_x: false,
+        flip_y: false,
+        pivot: None
+    });
 }
