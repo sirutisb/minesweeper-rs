@@ -37,6 +37,9 @@ async fn main() {
 
     let mut started_game = false;
 
+    let mut flagged_cells = 0;
+    let mut correct_flags = 0;
+
     loop {
         // ----- HANDLE INPUT -----
         let lmouse_down = is_mouse_button_pressed(MouseButton::Left);
@@ -44,7 +47,8 @@ async fn main() {
         let (mouse_x, mouse_y) = mouse_position();
 
         // ----- UPDATE STATE -----
-        if rmouse_down {
+        // Bug fix: you cant flag a cell unless starting a game otherwise correct_flags will be desynced once mines get generated.
+        if rmouse_down && started_game {
             let clicked_r : i32 = (mouse_y / CELL_HEIGHT) as i32;
             let clicked_c : i32 = (mouse_x / CELL_WIDTH) as i32;
 
@@ -54,7 +58,23 @@ async fn main() {
                 let cell = &mut grid[r][c];
 
                 if !cell.revealed {
-                    cell.flagged = !cell.flagged;
+                    if !cell.flagged {
+                        cell.flagged = true;
+                        flagged_cells += 1;
+                        if cell.bomb {
+                            correct_flags += 1;
+                        }
+                    } else {
+                        cell.flagged = false;
+                        flagged_cells -= 1;
+                        if cell.bomb {
+                            correct_flags -= 1;
+                        }
+                    }
+                }
+                if correct_flags == NUM_BOMBS && flagged_cells == NUM_BOMBS {
+                    println!("You Win!");
+                    reveal_all_bombs(&mut grid);
                 }
             }
         }
@@ -85,7 +105,7 @@ async fn main() {
                         // TODO: add reset game functionality
                     } else {
                         // Note: if its already revealed it ignores the cell implicitly
-                        bfs_reveal_cells(&mut grid, r, c);
+                        bfs_reveal_cells(&mut grid, r, c, &mut flagged_cells);
                     }
                 }
             }
@@ -157,8 +177,8 @@ async fn main() {
     }
 }
 
-fn bfs_reveal_cells(grid: &mut [[Cell; COLS]; ROWS], start_r: usize, start_c: usize) {
-    // invariant1: when calling this we must guarantee that we start with a safe cell
+fn bfs_reveal_cells(grid: &mut [[Cell; COLS]; ROWS], start_r: usize, start_c: usize, flagged_cells: &mut usize) {
+    // invariant1: when calling this we must guarantee that we start with a safe, unflagged cell
     // invariant2: all items added to queue have 0 neighbouring bombs
     // Note: this may reveal flagged cells but shouldnt matter (we might reveal cells with flagged = true)
 
@@ -185,11 +205,14 @@ fn bfs_reveal_cells(grid: &mut [[Cell; COLS]; ROWS], start_r: usize, start_c: us
 
                 let nr = nr as usize;
                 let nc = nc as usize;
-
+                let nei_cell = &mut grid[nr][nc];
                 // check if not revealed only, this acts as our visited set, and termination condition to never revisit.
-                if !grid[nr][nc].revealed {
-                    grid[nr][nc].revealed = true;
-                    if grid[nr][nc].number == 0 {
+                if !nei_cell.revealed {
+                    nei_cell.revealed = true;
+                    if nei_cell.flagged {
+                        *flagged_cells -= 1;
+                    }
+                    if nei_cell.number == 0 {
                         q.push_back((nr, nc));
                     }
                 }
